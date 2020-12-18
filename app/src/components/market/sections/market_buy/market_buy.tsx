@@ -17,9 +17,10 @@ import {
 } from '../../../../hooks'
 import { MarketMakerService } from '../../../../services'
 import { getLogger } from '../../../../util/logger'
+import { getCToken } from '../../../../util/networks'
 import { RemoteData } from '../../../../util/remote_data'
 import { computeBalanceAfterTrade, formatBigNumber, formatNumber, mulBN } from '../../../../util/tools'
-import { MarketMakerData, OutcomeTableValue, Status, Ternary, Token } from '../../../../util/types'
+import { CToken, MarketMakerData, OutcomeTableValue, Status, Ternary, Token } from '../../../../util/types'
 import { Button, ButtonContainer } from '../../../button'
 import { ButtonType } from '../../../button/button_styling_types'
 import { BigNumberInput, TextfieldCustomPlaceholder } from '../../../common'
@@ -30,6 +31,7 @@ import { CurrenciesWrapper, GenericError } from '../../common/common_styled'
 import { CurrencySelector } from '../../common/currency_selector'
 import { GridTransactionDetails } from '../../common/grid_transaction_details'
 import { OutcomeTable } from '../../common/outcome_table'
+import { RecommendedServices } from '../../common/recommended_services/index'
 import { SetAllowance } from '../../common/set_allowance'
 import { TransactionDetailsCard } from '../../common/transaction_details_card'
 import { TransactionDetailsLine } from '../../common/transaction_details_line'
@@ -67,6 +69,7 @@ const MarketBuyWrapper: React.FC<Props> = (props: Props) => {
   const [collateral, setCollateral] = useState<Token>(marketMakerData.collateral)
   const [status, setStatus] = useState<Status>(Status.Ready)
   const [outcomeIndex, setOutcomeIndex] = useState<number>(0)
+  const [supplyCompoundProtocol, setSupplyCompoundProtocol] = useState<boolean>(false)
   const [amount, setAmount] = useState<Maybe<BigNumber>>(new BigNumber(0))
   const [amountToDisplay, setAmountToDisplay] = useState<string>('')
   const [isNegativeAmount, setIsNegativeAmount] = useState<boolean>(false)
@@ -80,6 +83,25 @@ const MarketBuyWrapper: React.FC<Props> = (props: Props) => {
 
   const hasEnoughAllowance = RemoteData.mapToTernary(allowance, allowance => allowance.gte(amount || Zero))
   const hasZeroAllowance = RemoteData.mapToTernary(allowance, allowance => allowance.isZero())
+
+  const [compoundRecommended, setCompoundRecommended] = useState(false)
+  const [recommendedCToken, setrecommendedCToken] = useState<CToken>()
+  const [compoundSelected, setcompoundSelected] = useState(supplyCompoundProtocol)
+  const toggleCompoundSelect = () => {
+    setcompoundSelected(!compoundSelected)
+  }
+
+  useEffect(() => {
+    const { networkId } = context
+    try {
+      const cCollateral = getCToken(networkId, ('c' + collateral.symbol.toLowerCase()) as KnownCToken)
+      setCompoundRecommended(true)
+      setrecommendedCToken(cCollateral)
+    } catch (e) {
+      setCompoundRecommended(false)
+      console.log(e)
+    }
+  }, [collateral])
 
   useEffect(() => {
     setIsNegativeAmount(formatBigNumber(amount || Zero, collateral.decimals).includes('-'))
@@ -156,6 +178,7 @@ const MarketBuyWrapper: React.FC<Props> = (props: Props) => {
         amount: amount || Zero,
         outcomeIndex,
         marketMaker,
+        supplyCompoundProtocol,
       })
       await fetchGraphMarketMakerData()
       await fetchCollateralBalance()
@@ -322,6 +345,17 @@ const MarketBuyWrapper: React.FC<Props> = (props: Props) => {
           finished={allowanceFinished && RemoteData.is.success(allowance)}
           loading={RemoteData.is.asking(allowance)}
           onUnlock={unlockCollateral}
+        />
+      )}
+      {console.log('thectoken------', recommendedCToken)}
+      {compoundRecommended && (
+        <RecommendedServices
+          cToken={recommendedCToken}
+          collateral={collateral}
+          context={context}
+          onClick={() => toggleCompoundSelect()}
+          selected={compoundSelected}
+          style={{ marginBottom: 20 }}
         />
       )}
       <StyledButtonContainer>

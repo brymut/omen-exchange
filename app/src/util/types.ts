@@ -1,6 +1,7 @@
 import Big from 'big.js'
 import { Block } from 'ethers/providers'
 import { BigNumber } from 'ethers/utils'
+import { ReactNode } from 'react'
 
 import { Outcome } from '../components/market/sections/market_create/steps/outcomes'
 
@@ -75,6 +76,15 @@ export interface Token {
   volume?: string
 }
 
+export interface CToken {
+  address: string
+  decimals: number
+  symbol: string
+  image?: () => JSX.Element
+  volume?: string
+  abi?: any
+}
+
 export interface QuestionLog {
   category: string
   lang: string
@@ -133,6 +143,7 @@ export interface MarketData {
   outcomes: Outcome[]
   loadedQuestionId: Maybe<string>
   verifiedLabel?: string
+  supplyCompoundProtocol?: boolean
 }
 
 export enum MarketStates {

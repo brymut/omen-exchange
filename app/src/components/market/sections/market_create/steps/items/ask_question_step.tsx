@@ -115,6 +115,7 @@ interface Props {
     arbitratorsCustom: Arbitrator[]
     loadedQuestionId: Maybe<string>
     outcomes: Outcome[]
+    supplyCompoundProtocol: boolean | undefined
   }
   addArbitratorCustom: (arbitrator: Arbitrator) => void
   addCategoryCustom: (category: string) => void

@@ -1,3 +1,5 @@
+import { ReactNode } from 'react'
+
 import {
   DEFAULT_ARBITRATOR,
   DEFAULT_TOKEN,
@@ -9,10 +11,18 @@ import {
   GRAPH_RINKEBY_WS,
   INFURA_PROJECT_ID,
 } from '../common/constants'
+import cBatAbi from '../util/ctokens/abis/cBatAbi.json'
+import cDaiAbi from '../util/ctokens/abis/cDaiAbi.json'
+import cEthAbi from '../util/ctokens/abis/cEthAbi.json'
+import cUsdcAbi from '../util/ctokens/abis/cUsdcAbi.json'
+import cUsdtAbi from '../util/ctokens/abis/cUsdtAbi.json'
+import cWbtcAbi from '../util/ctokens/abis/cWbtcAbi.json'
+import cZrxAbi from '../util/ctokens/abis/cZrxAbi.json'
+import { cBatIcon, cDaiIcon, cEthIcon, cUsdcIcon, cUsdtIcon, cWbtcIcon, cZrxIcon } from '../util/ctokens/icons'
 import { entries, isNotNull } from '../util/type-utils'
 
 import { getImageUrl } from './token'
-import { Arbitrator, Token } from './types'
+import { Arbitrator, CToken, Token } from './types'
 
 export type NetworkId = 1 | 4
 
@@ -58,6 +68,17 @@ interface KnownTokenData {
     [K in NetworkId]?: string
   }
   order: number
+}
+
+interface KnownCTokenData {
+  symbol: string
+  decimals: number
+  addresses: {
+    [K in NetworkId]?: string
+  }
+  order: number
+  image: () => JSX.Element
+  abi: any
 }
 
 const networks: { [K in NetworkId]: Network } = {
@@ -466,4 +487,116 @@ export const getOmenTCRListId = (networkId: number): number => {
   }
 
   return networks[networkId].omenTCRListId
+}
+
+export const knownCTokens: { [name in KnownCToken]: KnownCTokenData } = {
+  cdai: {
+    symbol: 'cDAI',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643',
+      [networkIds.RINKEBY]: '0x6d7f0754ffeb405d23c51ce938289d4835be3b14',
+    },
+    order: 2,
+    image: cDaiIcon,
+    abi: cDaiAbi,
+  },
+  cbat: {
+    symbol: 'cBAT',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e',
+      [networkIds.RINKEBY]: '0xebf1a11532b93a529b5bc942b4baa98647913002',
+    },
+    order: 1,
+    image: cBatIcon,
+    abi: cBatAbi,
+  },
+  ceth: {
+    symbol: 'cETH',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5',
+      [networkIds.RINKEBY]: '0xd6801a1dffcd0a410336ef88def4320d6df1883e',
+    },
+    order: 3,
+    image: cEthIcon,
+    abi: cEthAbi,
+  },
+  cusdc: {
+    symbol: 'cUSDC',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0x39aa39c021dfbae8fac545936693ac917d5e7563',
+      [networkIds.RINKEBY]: '0x5b281a6dda0b271e91ae35de655ad301c976edb1',
+    },
+    order: 4,
+    image: cUsdcIcon,
+    abi: cUsdcAbi,
+  },
+  cusdt: {
+    symbol: 'cUSDT',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9',
+      [networkIds.RINKEBY]: '0x2fb298bdbef468638ad6653ff8376575ea41e768',
+    },
+    order: 5,
+    image: cUsdtIcon,
+    abi: cUsdtAbi,
+  },
+  cwbtc: {
+    symbol: 'cWBTC',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0xc11b1268c1a384e55c48c2391d8d480264a3a7f4',
+      [networkIds.RINKEBY]: '0x0014f450b8ae7708593f4a46f8fa6e5d50620f96',
+    },
+    order: 6,
+    image: cWbtcIcon,
+    abi: cWbtcAbi,
+  },
+  czrx: {
+    symbol: 'cZRX',
+    decimals: 8,
+    addresses: {
+      [networkIds.MAINNET]: '0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407',
+      [networkIds.RINKEBY]: '0x52201ff1720134bbbbb2f6bc97bf3715490ec19b',
+    },
+    order: 7,
+    image: cZrxIcon,
+    abi: cZrxAbi,
+  },
+}
+
+export const getCContractAddress = (networkId: number, contract: KnownContracts) => {
+  if (!validNetworkId(networkId)) {
+    throw new Error(`Unsupported network id: '${networkId}'`)
+  }
+  return networks[networkId].contracts[contract]
+}
+
+export const getCToken = (networkId: number, tokenId: KnownCToken): CToken => {
+  if (!validNetworkId(networkId)) {
+    throw new Error(`Unsupported network id: '${networkId}'`)
+  }
+
+  const token = knownCTokens[tokenId]
+  if (!token) {
+    throw new Error(`Unsupported token id: '${tokenId}'`)
+  }
+
+  const address = token.addresses[networkId]
+
+  if (!address) {
+    throw new Error(`Unsupported network id: '${networkId}'`)
+  }
+
+  return {
+    address,
+    decimals: token.decimals,
+    symbol: token.symbol,
+    image: () => token.image,
+    abi: token.abi,
+  }
 }

@@ -20,9 +20,10 @@ import {
 import { useGraphMarketsFromQuestion } from '../../../../../../hooks/useGraphMarketsFromQuestion'
 import { BalanceState, fetchAccountBalance } from '../../../../../../store/reducer'
 import { MarketCreationStatus } from '../../../../../../util/market_creation_status_data'
+import { getCToken } from '../../../../../../util/networks'
 import { RemoteData } from '../../../../../../util/remote_data'
 import { formatBigNumber, formatDate, formatNumber } from '../../../../../../util/tools'
-import { Arbitrator, Ternary, Token } from '../../../../../../util/types'
+import { Arbitrator, CToken, Ternary, Token } from '../../../../../../util/types'
 import { Button } from '../../../../../button'
 import { ButtonType } from '../../../../../button/button_styling_types'
 import { BigNumberInput, SubsectionTitle, TextfieldCustomPlaceholder } from '../../../../../common'
@@ -48,6 +49,7 @@ import { CreateCard } from '../../../../common/create_card'
 import { CurrencySelector } from '../../../../common/currency_selector'
 import { DisplayArbitrator } from '../../../../common/display_arbitrator'
 import { GridTransactionDetails } from '../../../../common/grid_transaction_details'
+import { RecommendedServices } from '../../../../common/recommended_services'
 import { SetAllowance } from '../../../../common/set_allowance'
 import { TradingFeeSelector } from '../../../../common/trading_fee_selector'
 import { TransactionDetailsCard } from '../../../../common/transaction_details_card'
@@ -175,6 +177,7 @@ interface Props {
     outcomes: Outcome[]
     loadedQuestionId: Maybe<string>
     verifyLabel?: string
+    supplyCompoundProtocol?: boolean
   }
   marketCreationStatus: MarketCreationStatus
   handleCollateralChange: (collateral: Token) => void
@@ -202,7 +205,18 @@ const FundingAndFeeStep: React.FC<Props> = (props: Props) => {
     values,
   } = props
 
-  const { arbitrator, category, collateral, funding, loadedQuestionId, outcomes, question, resolution, spread } = values
+  const {
+    arbitrator,
+    category,
+    collateral,
+    funding,
+    loadedQuestionId,
+    outcomes,
+    question,
+    resolution,
+    spread,
+    supplyCompoundProtocol,
+  } = values
 
   const { markets } = useGraphMarketsFromQuestion(loadedQuestionId || '')
 
@@ -232,6 +246,25 @@ const FundingAndFeeStep: React.FC<Props> = (props: Props) => {
   useEffect(() => {
     dispatch(fetchAccountBalance(account, provider, collateral))
   }, [dispatch, account, provider, collateral])
+
+  const [compoundRecommended, setCompoundRecommended] = useState(false)
+  const [recommendedCToken, setrecommendedCToken] = useState<CToken>()
+  const [compoundSelected, setcompoundSelected] = useState(supplyCompoundProtocol)
+  const toggleCompoundSelect = () => {
+    setcompoundSelected(!compoundSelected)
+  }
+
+  useEffect(() => {
+    const { networkId } = context
+    try {
+      const cCollateral = getCToken(networkId, ('c' + collateral.symbol.toLowerCase()) as KnownCToken)
+      setCompoundRecommended(true)
+      setrecommendedCToken(cCollateral)
+    } catch (e) {
+      setCompoundRecommended(false)
+      console.log(e)
+    }
+  }, [collateral])
 
   const [collateralBalance, setCollateralBalance] = useState<BigNumber>(Zero)
   const [collateralBalanceFormatted, setCollateralBalanceFormatted] = useState<string>(
@@ -460,6 +493,16 @@ const FundingAndFeeStep: React.FC<Props> = (props: Props) => {
             loading={RemoteData.is.asking(allowance)}
             marginBottom
             onUnlock={unlockCollateral}
+            style={{ marginBottom: 20 }}
+          />
+        )}
+        {compoundRecommended && (
+          <RecommendedServices
+            cToken={recommendedCToken}
+            collateral={collateral}
+            context={context}
+            onClick={() => toggleCompoundSelect()}
+            selected={compoundSelected}
             style={{ marginBottom: 20 }}
           />
         )}

@@ -62,6 +62,7 @@ export const MarketWizardCreator = (props: Props) => {
     question: '',
     resolution: null,
     spread: MARKET_FEE,
+    supplyCompoundProtocol: false,
   }
 
   const [currentStep, setCurrentStep] = useState(1)
@@ -277,6 +278,7 @@ export const MarketWizardCreator = (props: Props) => {
       outcomes,
       question,
       resolution,
+      supplyCompoundProtocol,
     } = marketData
 
     switch (currentStep) {
@@ -318,6 +320,7 @@ export const MarketWizardCreator = (props: Props) => {
               resolution,
               arbitrator,
               arbitratorsCustom,
+              supplyCompoundProtocol,
             }}
           />
         )

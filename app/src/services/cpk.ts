@@ -7,6 +7,7 @@ import moment from 'moment'
 
 import { getLogger } from '../util/logger'
 import { getCPKAddresses, getContractAddress } from '../util/networks'
+import { getCToken, getTokenFromAddress } from '../util/networks'
 import { calcDistributionHint } from '../util/tools'
 import { MarketData, Question, Token } from '../util/types'
 
@@ -23,6 +24,7 @@ interface CPKBuyOutcomesParams {
   amount: BigNumber
   outcomeIndex: number
   marketMaker: MarketMakerService
+  supplyCompoundProtocol: boolean
 }
 
 interface CPKSellOutcomesParams {
@@ -99,13 +101,23 @@ class CPKService {
     return this.cpk.address
   }
 
-  buyOutcomes = async ({ amount, marketMaker, outcomeIndex }: CPKBuyOutcomesParams): Promise<TransactionReceipt> => {
+  buyOutcomes = async ({
+    amount,
+    marketMaker,
+    outcomeIndex,
+    supplyCompoundProtocol,
+  }: CPKBuyOutcomesParams): Promise<TransactionReceipt> => {
     try {
       const signer = this.provider.getSigner()
       const account = await signer.getAddress()
 
       const collateralAddress = await marketMaker.getCollateralToken()
       const marketMakerAddress = marketMaker.address
+      const network = await this.provider.getNetwork()
+      const networkId = network.chainId
+      const collacteralToken = await getTokenFromAddress(networkId, collateralAddress)
+
+      const cToken = getCToken(networkId, ('c' + collacteralToken.symbol.toLowerCase()) as KnownCToken)
 
       const collateralService = new ERC20Service(this.provider, account, collateralAddress)
 
@@ -126,6 +138,19 @@ class CPKService {
           data: MarketMakerService.encodeBuy(amount, outcomeIndex, outcomeTokensToBuy),
         },
       ]
+      if (supplyCompoundProtocol) {
+        transactions.splice(1, 0, {
+          to: collateralAddress,
+          data: ERC20Service.encodeApproveUnlimited(cToken.address),
+        })
+        transactions.splice(2, 0, {
+          to: cToken.address,
+          data: new ethers.Contract(cToken.address, cToken.abi, this.provider)
+            .connect(signer)
+            .mint(amount)
+            .encodeABI(),
+        })
+      }
 
       // Check  if the allowance of the CPK to the market maker is enough.
       const hasCPKEnoughAlowance = await collateralService.hasEnoughAllowance(
